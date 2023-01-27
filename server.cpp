@@ -1,10 +1,11 @@
 #include<windows.networking.h>
 #include<iostream>
+#include<string>
 #pragma comment(lib, "Ws2_32.lib")
 //port 42069
 //local ip is 10.17.68.58
-// 0000 1010 0001 0001 0100 0100 0011 1010
-// 
+//00001010000100010100010000111010
+//
 //declan ip is 10.17.68.53
 //cory ip is 10.17.68.??
 //aidan ip is 10.17.68.59
@@ -32,14 +33,13 @@ int main() {
 
 
 	SOCKET server_socket = socket(AF_INET, SOCK_STREAM, 0);
-	if (server_socket < 0) {
+	if (server_socket == -1) {
 		perror("Server socket");
 		return -1;
 	}
 
 
 	if (bind(server_socket, (struct sockaddr*)&server_info, server_info_len) < 0) {
-		cout << "Definitely failing to bind\n";
 		perror("Bind");
 		return -1;
 	}
@@ -51,24 +51,43 @@ int main() {
 		return -1;
 	}
 
-
+	cout << "Listening for client..." << endl;
 	SOCKET client_socket = accept(server_socket, &client_info, &client_info_len);
 
 	if (client_socket < 0) {
 		perror("Client socket");
 		return -1;
 	}
+	cout << "Connected to client!" << endl;
 
+	char inputText[1500];
+	string outputText;
 
-	const char* hello = "Connected to Kyle";
-
-	if (send(client_socket, hello, strlen(hello), 0) < 0) {
-		perror("Sent");
-		return -1;
+	while (1) {
+		cout << "Awaiting client response..." << endl;
+		memset(&inputText, 0, sizeof(inputText));//clear the buffer
+		recv(client_socket, (char*)&inputText, sizeof(inputText), 0);
+		if (!strcmp(inputText, "exit"))
+		{
+			cout << "Client has quit the session" << endl;
+			break;
+		}
+		cout << "Client: " << inputText << endl;
+		cout << ">";
+		getline(cin, outputText);
+		memset(&inputText, 0, sizeof(inputText)); //clear the buffer
+		strcpy_s(inputText, outputText.c_str());
+		if (outputText == "exit")
+		{
+			//send to the client that server has closed the connection
+			send(client_socket, (char*)&inputText, strlen(inputText), 0);
+			break;
+		}
+		//send the message to client
+		send(client_socket, (char*)&inputText, strlen(inputText), 0);
 	}
-
-
-
 	closesocket(client_socket);
+	closesocket(server_socket);
+	cout << "Connection closed." << endl;
 
 }
